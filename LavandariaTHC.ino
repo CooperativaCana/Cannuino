@@ -1,3 +1,6 @@
+// This sites tell you all about ESP8266 setup to do before to run this code in arduino.
+// https://eldontronics.wordpress.com/2017/08/28/beginning-iot-with-esp8266-01-wifi-module-and-cayenne-iot-platform/
+
 #include <CayenneMQTTESP8266Shield.h>
 #include "RTClib.h"
 #include <Wire.h>
