@@ -80,14 +80,14 @@ void timerLampadas () {
 
 //2x Temperature and Humidity sensors to Cayenne Monitoring
 void temHumiCayenne() {
-  float hum_veg = dht_veg.readHumidity() - 25; // lê e armazena o valor da humidade do sensor da FLORAÇÃO
-  float temp_veg = dht_veg.readTemperature(); // lê e armazena o valor da temperatura do sensor da FLORAÇÃO
-  float hum_flo = dht_flo.readHumidity() - 25; // lê e armazena o valor da humidade do sensor do VEGETATIVO
-  float temp_flo = dht_flo.readTemperature(); // lê e armazena o valor da temperatura do sensor do VEGETATIVO
-  Cayenne.virtualWrite(1, temp_veg, TYPE_TEMPERATURE, UNIT_CELSIUS); //// LEITURA DO SENSOR TEMPERATURA CFL
-  Cayenne.virtualWrite(2, hum_veg, TYPE_RELATIVE_HUMIDITY, UNIT_PERCENT);//// LEITURA DO SENSOR HUMIDADE CFL
-  Cayenne.virtualWrite(3, temp_flo, TYPE_TEMPERATURE, UNIT_CELSIUS); //// LEITURA DO SENSOR TEMPERATURA HPS
-  Cayenne.virtualWrite(4, hum_flo, TYPE_RELATIVE_HUMIDITY, UNIT_PERCENT); //// LEITURA DO SENSOR HUMIDADE HPS
+  float hum_veg = dht_veg.readHumidity() - 25; 
+  float temp_veg = dht_veg.readTemperature();
+  float hum_flo = dht_flo.readHumidity() - 25; 
+  float temp_flo = dht_flo.readTemperature();
+  Cayenne.virtualWrite(1, temp_veg, TYPE_TEMPERATURE, UNIT_CELSIUS); 
+  Cayenne.virtualWrite(2, hum_veg, TYPE_RELATIVE_HUMIDITY, UNIT_PERCENT);
+  Cayenne.virtualWrite(3, temp_flo, TYPE_TEMPERATURE, UNIT_CELSIUS); 
+  Cayenne.virtualWrite(4, hum_flo, TYPE_RELATIVE_HUMIDITY, UNIT_PERCENT); 
 }
 
 //2x Capacitive Soil Sensors to Cayenne Monitoring
@@ -98,10 +98,10 @@ void soloCayenne() {
   int solo_hps = 0;
   solo_cfl = analogRead(A14);
   solo_hps = analogRead(A15);
-  ///Dry: (520 430]     //// ( 609 - 590 - 560 ) | 0% a 23% SECO / AMARELO
-  ///Wet: (430 350]     //// ( 560 - 455 - 350 ) | 24% a 64% HUMIDO / VERDE
-  ///Water: (350 260]   //// ( 350 - 305 - 276 ) | 65% a 100% MOLHADO / VERMELHO
-  //////map(valor/input a ser mapeado, fromLow, fromHigh, toLow, toHigh)
+  ///Dry: (520 430]     //// ( 609 - 590 - 560 ) | 0% a 23% dry 
+  ///Wet: (430 350]     //// ( 560 - 455 - 350 ) | 24% a 64% wet 
+  ///Water: (350 260]   //// ( 350 - 305 - 276 ) | 65% a 100% water
+  //////map(value to be mapped, fromLow, fromHigh, toLow, toHigh)
   output_value_hps = map(solo_hps, 656, 276, 0, 100);
   output_value_cfl = map(solo_cfl, 651, 280, 0, 100);
   Cayenne.virtualWrite(6, output_value_hps); 
@@ -163,7 +163,10 @@ void setup()
   EspSerial.begin(115200);
   Cayenne.begin(username, password, clientID, wifi, ssid, wifiPassword);
   Wire.begin();
-  //rtc.adjust(DateTime(2019, 10, 31, 1, 16, 0));
+  
+  ///  to get the rtc on'clock, run just one time the code with and then without
+  //rtc.adjust(DateTime(2019, 10, 31, 1, 16, 0)); ///  to get the rtc on'clock, run just one time the code with and then without
+  
   dht_veg.begin();
   dht_flo.begin();
   pinMode(32, OUTPUT); 
