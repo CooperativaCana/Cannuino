@@ -13,7 +13,9 @@ char wifiPassword[] = "XXXXXX"; /// insert your router/device password
 char username[] = "cd805270-4f14-11e9-b395-f53190c2ab6f";
 char password[] = "dcb5452141ec23d783bcc0c0ef46b4a89e57cc5e";
 char clientID[] = "cf88f560-f3f4-11e9-a38a-d57172a4b4d4";
-#define EspSerial Serial1
+
+// Comunnication between ESP8266 and Arduino thru TX1 and RX1
+#define EspSerial Serial1 
 ESP8266 wifi(&EspSerial);
 
 //RTC1307 SDA SCL Connection
