@@ -35,18 +35,25 @@ DHT dht_veg(DHTPIN_veg, DHTTYPE);
 //8 Channel Relay
 #define rele_hps 42 
 int rele_hpsOut = 42; 
+
 #define rele_cfl 40 
 int rele_cflOut = 40; 
+
 #define rele_ctube 44 
 int rele_ctubeOut = 44; 
+
 #define rele_bomba_veg 46 
 int rele_bomba_vegOut = 46; 
+
 #define rele_valvula 34 
 int rele_valvulaOut = 34;
-#define rele_ventoinha 32 
-int rele_ventoinhaOut = 32; 
+
+#define rele_airpump 32 
+int rele_airpumpOut = 32; 
+
 #define rele_bomba_bloom 36 
 int rele_lampada_vegetativoOut = 36;
+
 #define rele_bomba_grow 38  
 int rele_circulacao_vegetativoOut = 38;
 
@@ -116,6 +123,42 @@ void dataCayenne() {
   Cayenne.virtualWrite(28, now.month());
 }
 
+// 2x Water Pum, 2x Air Pump, 1x ElectroValve
+void RegaH2O() {
+  int solo_cfl = 0;
+  int solo_hps = 0;
+  solo_cfl = analogRead(A14);
+  solo_hps = analogRead(A15);
+  DateTime now = rtc.now();
+  if (solo_hps <= 450)
+  {
+    digitalWrite(rele_valvula, LOW);
+     digitalWrite(rele_bomba_bloom, LOW);
+  }
+  if (solo_cfl <= 450)
+  {
+    digitalWrite(rele_bomba_veg, LOW);
+    digitalWrite(rele_bomba_grow, LOW);
+  }
+  if (solo_hps >= 560)
+  {
+    digitalWrite(rele_valvula, HIGH);
+  } 
+   if (solo_hps >= 560)
+  {
+    digitalWrite(rele_bomba_veg, HIGH);
+  }
+  if (now.dayOfTheWeek() == 6)
+  {
+    digitalWrite(rele_airpump, HIGH);
+    delay(5000);
+    digitalWrite(rele_bomba_bloom, HIGH);
+    digitalWrite(rele_bomba_grow, HIGH);
+  }
+  }
+
+
+
 //4x Buttons to action in Cayenne
 CAYENNE_IN(V17)
 {
@@ -184,5 +227,6 @@ void loop() {
   temHumiCayenne();
   soloCayenne();
   dataCayenne();
+  RegaH2O();
   Cayenne.loop(); // To upload/download the state of buttons in Cayenne 
 }
