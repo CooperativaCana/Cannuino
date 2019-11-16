@@ -58,7 +58,7 @@ int rele_lampada_vegetativoOut = 36;
 int rele_circulacao_vegetativoOut = 38;
 
 // 1X EC meter + Watertemperature
-void MedidorEc () {
+void MedidorEc() {
 Cayenne.virtualWrite(32, 0.8, "type", "Week1"); //week_1 | 3
 Cayenne.virtualWrite(33, 0.9, "type", "Week2"); //week_2 | 5
 Cayenne.virtualWrite(34, 1, "type", "Week3"); //week_3 | 7
@@ -167,17 +167,29 @@ void RegaH2O() {
    if (solo_hps >= 560)
   {
     digitalWrite(rele_bomba_veg, HIGH);
+ }
   }
+  
+void RegaNutes() {
+   int solo_cfl = 0;
+  int solo_hps = 0;
+  solo_cfl = analogRead(A14);
+  solo_hps = analogRead(A15);
+  DateTime now = rtc.now();
   if (now.dayOfTheWeek() == 6)
   {
     digitalWrite(rele_airpump, HIGH);
     digitalWrite(rele_bomba_bloom, HIGH);
     digitalWrite(rele_bomba_grow, HIGH);
   }
+  else if(solo_hps <= 450) 
+  {
+  digitalWrite(rele_airpump, LOW);
+    digitalWrite(rele_bomba_bloom, LOW);
+    digitalWrite(rele_bomba_grow, LOW);
   }
-
-
-
+   }
+  
 //4x Buttons to action in Cayenne
 CAYENNE_IN(V17)
 {
@@ -244,12 +256,12 @@ void setup()
 }
 
 void loop() {
-    Cayenne.loop(); // To upload/download the state of buttons in Cayenne
+  Cayenne.loop(); // To upload/download the state of buttons in Cayenne
   timerLampadas ();
   MedidorEc();
   temHumiCayenne();
   soloCayenne();
   dataCayenne();
-  RegaH2O();  
-  //Cayenne.loop(); // To upload/download the state of buttons in Cayenne 
-}
+  RegaH2O(); 
+  RegaNutes(); 
+  }
