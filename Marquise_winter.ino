@@ -210,5 +210,4 @@ void loop() {
   soloCayenne();
   infoCayenne();
   Cayenne.loop(); // To upload/download the state of buttons in Cayenne
-  manualwatering();
 }
