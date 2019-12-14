@@ -1,7 +1,7 @@
 // This sites tell you all about ESP8266 setup before to run the code in arduino.
 // https://eldontronics.wordpress.com/2017/08/28/beginning-iot-with-esp8266-01-wifi-module-and-cayenne-iot-platform/
-//*****VERY IMPORTANT: MY 8 CH RELAY ARE NORMALLY OPEN SO I HAVE TO REVERSE HIGH/LOW STATE IN CODE.
-///////////////////////SO IF YOU HAVE A NORNALLY CLOSED RELAY YOU SHOULD CHANGE IN CODE THE HIGH/LOW.
+//*****VERY IMPORTANT: MY 8 CH RELAY ARE NORMALLY OPEN SO I HAVE TO REVERSE !HIGH and !LOW STATE IN CODE.
+///////////////////////SO IF YOU HAVE A NORNALLY CLOSED RELAY YOU SHOULD CHANGE IN CODE THE HIGH and LOW.
 
 
 
@@ -65,8 +65,47 @@ int regaOut = 37;
 #define ctube 39 // R8
 int ctubeOut = 39;
 
-////////Buttons
-int keypadPin = A13;
+
+void setup()
+{
+  Serial.begin(9600);
+  EspSerial.begin(115200);
+  Cayenne.begin(username, password, clientID, wifi, ssid, wifiPassword);
+  Wire.begin();
+
+  ///to get the rtc on'clock, run just one time the code with and then without
+  //rtc.adjust(DateTime(2019, 12, 14, 02, 49 , 0)); ///  to get the rtc on'clock, run just one time the code with and then without
+
+  dht_veg.begin();
+  dht_flo.begin();
+  pinMode(29, OUTPUT); //1
+  pinMode(31, OUTPUT); //2
+  pinMode(33, OUTPUT); //3
+  pinMode(35, OUTPUT); //4
+  pinMode(37, OUTPUT); //5
+  pinMode(39, OUTPUT); //8
+  
+  //// Because my Relays are normally open so they turn on in normal state
+  digitalWrite(29, HIGH);
+  digitalWrite(31, HIGH);
+  digitalWrite(33, HIGH);
+  digitalWrite(35, HIGH);
+  digitalWrite(37, HIGH);
+  digitalWrite(39, HIGH);
+  digitalWrite(41, HIGH);
+}
+
+void loop() {
+  Nutrients_Flowering();
+  Nutrients_Vegetative();
+  timerLampadas ();
+  temHumiCayenne();
+  soloCayenne();
+  infoCayenne();
+  Cayenne.loop(); // To upload/download the state of buttons in Cayenne
+}
+
+
 
 /////// Functions
 /////////////////////////////Lights Operation
@@ -139,44 +178,53 @@ void infoCayenne() {
 CAYENNE_IN(V18)
 {
   if (getValue.asInt() == 0) {
-    digitalWrite(rega, HIGH);
+    digitalWrite(rega, !LOW);
   }
   else {
-    digitalWrite(rega, LOW);
+    digitalWrite(rega, !HIGH);
   }
 }
 
 //Nutrients on every Sunday until a limit of wet
-void Nutrients()
+void Nutrients_Flowering()
 {
   DateTime now = rtc.now();
-  if ((now.dayOfTheWeek() == 6 ) && ((analogRead(14) <= 400) && (analogRead(15) <= 400)))
+  if ((now.dayOfTheWeek() == 6 ) && (analogRead(15) >= 400)) // now.dayOfTheWeek() == 6 can change 0-Sun,  (...) 6-Saturday
   {
-    digitalWrite(bloom, LOW);
-    digitalWrite(grow, LOW);
+    digitalWrite(bloom, !HIGH);
   }
   else
   {
-    digitalWrite(bloom, HIGH);
-    digitalWrite(grow, HIGH);
+    digitalWrite(bloom, !LOW);
   }
 }
 
-
+void Nutrients_Vegetative()
+{
+  DateTime now = rtc.now();
+  if ((now.dayOfTheWeek() == 6 ) && (analogRead(14) >= 400)) // now.dayOfTheWeek() == 6 can change 0-Sun,  (...) 6-Saturday
+  {
+    digitalWrite(grow, !HIGH);
+  }
+  else
+  {
+    digitalWrite(grow, !LOW);
+  }
+}
 //To acess this button on Cayenne you must do Cayenne Web
 // Add new...> Widget> Actuators > Generic > Digital > fill info request
 CAYENNE_IN(V19)
 {
   setSyncProvider(RTC.get);
   time_t daysToHarvest, femiDias;
-  femiDias = (1588636800L - 1575922807L); //  ( 5 de Mai  - 1 jan 2020 ) = 126 dias
+  femiDias = (1586736000L - 1575922807L); //  ( 5 de Mai  - 1 jan 2020 ) = 126 dias
   int diaZero = 0;
   diaZero = now();
   // days to harvest
   daysToHarvest = ((femiDias - diaZero) / 60 / 60 / 24);
   //days passed
   int daysPassed = 0;
-  daysPassed = ((femiDias + (diaZero + femiDias) / 60 / 60 / 24));
+  daysPassed = ((femiDias - (diaZero + femiDias) / 60 / 60 / 24));
   // week passed
   int weekWeAreOn = 0;
   weekWeAreOn = (18 - (femiDias - diaZero) / 60 / 60 / 24 / 7);
@@ -197,7 +245,7 @@ CAYENNE_IN(V20)
 {
   setSyncProvider(RTC.get);
   time_t daysToHarvest, femiDias;
-  femiDias = (1588636800L - 1575922807L); //  ( 5 de Mai  - 1 jan 2020 ) = 126 dias
+  femiDias = (1586736000L - 1575922807L); //  ( 5 de Mai  - 1 jan 2020 ) = 126 dias
  int diaZero = 0;
   diaZero = now();
   // days to harvest
@@ -209,7 +257,7 @@ CAYENNE_IN(V20)
   int weekWeAreOn = 0;
   weekWeAreOn = (18 - (femiDias - diaZero) / 60 / 60 / 24 / 7);
 
-  if (getValue.asInt() == 1) {
+  if (getValue.asInt() == 0) {
     Cayenne.virtualWrite(50, daysToHarvest); //
     Cayenne.virtualWrite(51, daysPassed); //
     Cayenne.virtualWrite(52, weekWeAreOn); //
@@ -225,7 +273,7 @@ CAYENNE_IN(V21)
 {
   setSyncProvider(RTC.get);
   time_t daysToHarvest, autoDias;
-  autoDias = (1584489600L - 1575922807L); // ( 18 de Mar  - 1 jan 2020 ) = 77 dias
+  autoDias = (1582588800L - 1575922807L); // ( 25 de FEV  - 1 jan 2020 ) = 77 dias
   int diaZero = 0;
   diaZero = now();
   // days to harvest
@@ -247,34 +295,4 @@ CAYENNE_IN(V21)
     Cayenne.virtualWrite(54, 00.0);
     Cayenne.virtualWrite(55, 000); //1 ou 0
   }
-}
-
-void setup()
-{
-  Serial.begin(9600);
-  EspSerial.begin(115200);
-  Cayenne.begin(username, password, clientID, wifi, ssid, wifiPassword);
-  Wire.begin();
-
-  ///to get the rtc on'clock, run just one time the code with and then without
-  //rtc.adjust(DateTime(2019, 12, 14, 02, 49 , 0)); ///  to get the rtc on'clock, run just one time the code with and then without
-
-  dht_veg.begin();
-  dht_flo.begin();
-  pinMode(29, OUTPUT); //1
-  pinMode(31, OUTPUT); //2
-  pinMode(33, OUTPUT); //3
-  pinMode(35, OUTPUT); //4
-  pinMode(37, OUTPUT); //5
-  pinMode(39, OUTPUT); //8
-  pinMode(keypadPin, INPUT_PULLUP); // sets analog pin for input
-
-}
-void loop() {
-  timerLampadas ();
-  temHumiCayenne();
-  soloCayenne();
-  infoCayenne();
-  Nutrients();
-   Cayenne.loop(); // To upload/download the state of buttons in Cayenne
 }
