@@ -11,5 +11,6 @@ All necessary files are available here.
 1 - buy the parts
 2 - Follow schematic document, assembly of sensor, welding, connect to the canuino
 3 - Download Arduino IDE 
-4 - Open the * .ino file and follow the instructions.
-5 - test the sensor values.
+4 - Install zip files ( libraries ) on Arduino IDE
+5 - Open the * .ino, follow the instructions, upload code
+6 - test the sensor values.
