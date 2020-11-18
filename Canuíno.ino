@@ -1,9 +1,9 @@
 #define BLYNK_PRINT Serial
 #include <BlynkSimpleShieldEsp8266.h>
 #include <WiFi.h>
-char auth[] = "_v1WgCwcT98Ax8eYHhU4gJxoIowEexYh";
-char ssid[] = "NOS_Internet_Movel_C254";
-char pass[] = "04047761";
+char auth[] = "your auth token";
+char ssid[] = "your ssid name";
+char pass[] = "password";
 
 #include <ESP8266_Lib.h>
 #define EspSerial Serial1
