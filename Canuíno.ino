@@ -1,25 +1,39 @@
+////////////COMUNICAÇÃO INTERNET
 #define BLYNK_PRINT Serial
 #include <BlynkSimpleShieldEsp8266.h>
 #include <WiFi.h>
-char auth[] = "your auth token";
-char ssid[] = "your ssid name";
-char pass[] = "password";
+char auth[] = "_v1WgCwcT98Ax8eYHhU4gJxoIowEexYh";
+char ssid[] = "NOS_Internet_Movel_C254";
+char pass[] = "04047761";
+BlynkTimer timer;
 
+////////////ESP8266 WIFI
 #include <ESP8266_Lib.h>
 #define EspSerial Serial1
 ESP8266 wifi(&EspSerial);
 #define ESP8266_BAUD 115200
-BlynkTimer timer;
 
+////////////COMUNICAÇÃO COM I2C
 #include <Wire.h> //SCL,SDA library
+
+///////////DS1307 TINY REAL TIME CLOCK
 #include "RTClib.h" //RTC1307 library
 #include <DS1307RTC.h> //RTC1307, Clock
-
 RTC_DS1307 rtc;
 #if defined(ARDUINO_ARCH_SAMD)
 #define Serial SerialUSB
 #endif
 
+///////////SENSORES DE HUMIDADE E TEMPERATURA DO AR DHT22 E DHT11
+#include "DHT.h"
+#define DHTPIN_11 10     // what pin we're connected to
+#define DHTPIN_22 33
+#define DHTTYPE DHT11   // DHT 11 
+#define DHTTYPE DHT22   // DHT 22  (AM2302)
+DHT dht11(DHTPIN_11, DHT11);
+DHT dht22(DHTPIN_22, DHT22);
+
+///////////////////VISOR OLED
 #include <U8g2lib.h>
 #ifdef U8X8_HAVE_HW_SPI
 #include <SPI.h>
@@ -28,214 +42,360 @@ RTC_DS1307 rtc;
 #endif
 U8G2_SSD1306_128X64_NONAME_1_HW_I2C u8g2(U8G2_R0, /* reset=*/ U8X8_PIN_NONE);
 
-int lemon_kush_scrog = 0;
+//////////////////////////RELÉS do canal D2 ao D7
+#define balastro 8 /////////check ficha branca
+int balastroOut = 8;
 
-#include "DHT.h" //Temperature and humidity sensor library
-#define DHTPIN_sensor_dht22 3
-#define DHTTYPE DHT22
-DHT dht_sensor_dht22(DHTPIN_sensor_dht22, DHTTYPE);
+#define Led_vegetativo 3 // check ficha 3
+int Led_vegetativoOut = 3;
 
-#define balastro 39 /////////check ficha branca
-int balastroOut = 39;
+#define ventoinhaGrow 2 // ///////check ficha 1
+int ventoinhaGrowOut = 2;
 
-#define cooltubefan 45 // check ficha 12v fio separado
-int cooltubefanOut = 45;
+#define ventoinha_Bloom 6 //////////check  shuko femea preta
+int ventoinha_BloomOut = 6;
 
-#define mm125tube 35 /////////check ficha 2 ///ok
-int mm125tubeOut = 35;
+#define mm125tube 7 /////////check ficha 2 ///ok
+int mm125tubeOut = 7;
 
-#define intakefan 43 // check ficha 12v com nó
-int intakefanOut = 43;
+#define bomba 9 /////// check ficha 4
+int bombaOut = 9;
 
-#define ventoinha_grande 41 //////////check  shuko femea preta
-int ventoinha_grandeOut = 41;
+/////////////////////// 12V
 
-#define outake100mm 31 // ///////check ficha 1
-int outake100mmOut = 31;
+#define Piezo24v 4 // check ficha 24v
+int Piezo24vOut = 4;
 
-#define bomba 37 /////// check ficha 4
-int bombaOut = 37;
+#define intakefan 5 // check ficha 12v 
+int intakefanOut = 5;
 
-#define humificador 33 // check ficha 3
-int humificadorOut = 33;
+// current state of the button
+const int  buttonPin = 13;
+int buttonState = 0;         
+int lastButtonState = 0;
 
+/////////////////////IDE SETUP
 void setup() {
-
   Serial.begin(9600);
-  EspSerial.begin(ESP8266_BAUD);
-  delay(10);
-  Blynk.begin(auth, wifi, ssid, pass);
-  u8g2.begin();
   Wire.begin();
   rtc.begin();
-  //rtc.adjust(DateTime(2020, 10, 27, 23, 56 , 0)); ///  to get the rtc on'clock, run just one time the code with and then without
-  dht_sensor_dht22.begin();
-  DateTime now = rtc.now();
-  pinMode(31, OUTPUT);
-  pinMode(33, OUTPUT);
-  pinMode(35, OUTPUT);
-  pinMode(37, OUTPUT);
-  pinMode(39, OUTPUT);
-  pinMode(41, OUTPUT);
-  pinMode(43, OUTPUT);
-  pinMode(45, OUTPUT);
+  EspSerial.begin(ESP8266_BAUD);
+  Blynk.begin(auth, wifi, ssid, pass);
+  //rtc.adjust(DateTime(2020, 12, 10, 1, 34 , 0));
+  dht11.begin();
+  dht22.begin();
+  u8g2.begin();
 
-  digitalWrite(31, HIGH);
-  digitalWrite(33, HIGH);
-  digitalWrite(35, HIGH);
-  digitalWrite(37, HIGH);
-  digitalWrite(39, HIGH);
-  digitalWrite(41, HIGH);
-  digitalWrite(43, HIGH);
-  digitalWrite(45, HIGH);
-  timer.setInterval(1000L, Temperatura_Automatica);
-  timer.setInterval(2000L, timerLampadas_12);
+  /////////////RELÈS
+  pinMode(2, OUTPUT);
+  pinMode(3, OUTPUT);
+  pinMode(4, OUTPUT);
+  pinMode(5, OUTPUT);
+  pinMode(6, OUTPUT);
+  pinMode(7, OUTPUT);
+  pinMode(8, OUTPUT);
+  pinMode(9, OUTPUT);
+
+  //////PORQUE ESTÃO NORMALMENTE ABERTAS EM LOW
+  digitalWrite(2, HIGH);
+  digitalWrite(3, HIGH);
+  digitalWrite(4, HIGH);
+  digitalWrite(5, HIGH);
+  digitalWrite(6, HIGH);
+  digitalWrite(7, HIGH);
+  digitalWrite(8, HIGH);
+  digitalWrite(9, HIGH);
+
+  pinMode(buttonPin, INPUT);
 }
 
 void loop() {
   Blynk.run();
-  timer.run();
-  //rega();
-  timerLampadas_18();
-  Temperatura_Automatica();
-  u8g2.firstPage();
-  do {
-    draw();
-  } while (u8g2.nextPage());
+  luzes();
+  ambiente_bloom();
+  Humidade_Automatica_grow();
+  MenuPrincipal();
+  blynk_solo();
+  
+  buttonState = digitalRead(buttonPin);
+  if (buttonState != lastButtonState) {
+    if (buttonState == LOW) {
+      digitalWrite(12, HIGH);
+    } else {
+      digitalWrite(12, LOW);
+    }
+  }
+  lastButtonState = buttonState;
 }
 
-void draw() {
-  DateTime now = rtc.now();
-  float hum_sensor_dht22 = dht_sensor_dht22.readHumidity() - 12;
-  float temp_sensor_dht22 = dht_sensor_dht22.readTemperature();
-  // Calibration and data from sensor
-  ///Dry: (520 430]     //// ( 609 - 590 - 560 ) | 0% a 23% dry
-  ///Wet: (430 350]     //// ( 560 - 455 - 350 ) | 24% a 64% wet
-  ///Water: (350 260]   //// ( 350 - 305 - 276 ) | 65% a 100% water
-  lemon_kush_scrog = map(analogRead(A15), 656, 276, 0, 100); //////map(valor/input a ser mapeado, fromLow, fromHigh, toLow, toHigh)
+void blynk_solo() {
+  int sensor1Pin = A13;
+  int sensor1Value = 0;
+  int sensor1map = 0;
+  sensor1Value = analogRead(sensor1Pin);
+  sensor1map = map(sensor1Value, 0, 620, 0, 100); //////map(valor/input a ser mapeado, fromLow, fromHigh, toLow, toHigh)
 
-  u8g2.setFont(u8g2_font_inb16_mr);
-  u8g2.setCursor(0, 16);
-  u8g2.print("Solo="); u8g2.print(lemon_kush_scrog); u8g2.print(" %");
+  int sensor2Pin = A12;
+  int sensor2Value = 0;
+  int sensor2map = 0;
+  sensor2Value = analogRead(sensor2Pin);
+  sensor2map = map(sensor2Value,  0, 620, 0, 100); //////map(valor/input a ser mapeado, fromLow, fromHigh, toLow, toHigh)
 
-  u8g2.setFont(u8g2_font_courB14_tn);
-  u8g2.setCursor(0, 34);
-  u8g2.print("T"); u8g2.print(temp_sensor_dht22);
+  int sensor3Pin = A11;
+  int sensor3Value = 0;
+  int sensor3map = 0;
+  sensor3Value = analogRead(sensor3Pin);
+  sensor3map = map(sensor3Value,  0, 620, 0, 100); //////map(valor/input a ser mapeado, fromLow, fromHigh, toLow, toHigh)
 
-  u8g2.setCursor(0, 50);
-  u8g2.print("H"); u8g2.print(hum_sensor_dht22);
-
-  u8g2.setCursor(0, 64);
-  u8g2.print(now.hour()); u8g2.print(":"); u8g2.print(now.minute());
+  Blynk.virtualWrite(V5, sensor1map);
+  Blynk.virtualWrite(V6, sensor2map);
+  Blynk.virtualWrite(V7, sensor3map);
 }
 
+void MenuPrincipal() {
+  const int potPin = A6; //6
+  int potValue = 0;
+  int potMap = 0;
+
+  const int pot2Pin = A15; //
+  int pot2Value = 0;
+  int pot2Map = 0;
+
+  int temp_dht22 = dht22.readTemperature();
+  int hum_dht22 = dht22.readHumidity() - 9;
+  int temp_dht11 = dht11.readTemperature();
+  int hum_dht11 = dht11.readHumidity() ;
+
+  int sensor1Pin = A13;
+  int sensor1Value = 0;
+  int sensor1map = 0;
+  sensor1Value = analogRead(sensor1Pin);
+  sensor1map = map(sensor1Value, 0, 620, 0, 100); //////map(valor/input a ser mapeado, fromLow, fromHigh, toLow, toHigh)
+
+  int sensor2Pin = A12;
+  int sensor2Value = 0;
+  int sensor2map = 0;
+  sensor2Value = analogRead(sensor2Pin);
+  sensor2map = map(sensor2Value,  0, 620, 0, 100); //////map(valor/input a ser mapeado, fromLow, fromHigh, toLow, toHigh)
+
+  int sensor3Pin = A11;
+  int sensor3Value = 0;
+  int sensor3map = 0;
+  sensor3Value = analogRead(sensor3Pin);
+  sensor3map = map(sensor3Value,  0, 620, 0, 100); //////map(valor/input a ser mapeado, fromLow, fromHigh, toLow, toHigh)
+
+  int map_hum_dht11 = 0;
+  map_hum_dht11 = map(hum_dht11, 0, 130, 0, 100);
+
+  potValue = analogRead(potPin);
+  potMap = map(potValue, 10, 1000, 1, 3);
+  switch (potMap) {
+    case 1:
+      rega();
+      oled_rega();
+      break;
+
+    case 2:
+      rega_parada();
+      oled_rega_Stop();
+      break;
+
+    case 3:
+      pot2Value = analogRead(pot2Pin);
+      pot2Map = map(pot2Value, 0, 1023, 1, 7);
+      switch (pot2Map) {
+        case 1:
+          u8g2.firstPage();
+          do {
+            u8g2.setFont(u8g2_font_helvB14_te);
+            u8g2.setCursor(12, 26);
+            u8g2.print("Bloom Temp");
+            u8g2.setFont(u8g2_font_helvB24_te);
+            u8g2.setCursor(42, 56);
+            u8g2.print(temp_dht22);
+          }  while (u8g2.nextPage());
+          break;
+
+        case 2:
+          u8g2.firstPage();
+          do {
+            u8g2.setFont(u8g2_font_helvB14_te);
+            u8g2.setCursor(12, 26);
+            u8g2.print("Grow Temp");
+            u8g2.setFont(u8g2_font_helvB24_te);
+            u8g2.setCursor(42, 56);
+            u8g2.print(temp_dht11);
+          }  while (u8g2.nextPage());
+          break;
+
+        case 3:
+          u8g2.firstPage();
+          do {
+            u8g2.setFont(u8g2_font_helvB14_te);
+            u8g2.setCursor(12, 26);
+            u8g2.print("Grow Hum");
+            u8g2.setFont(u8g2_font_helvB24_te);
+            u8g2.setCursor(42, 56);
+            u8g2.print(map_hum_dht11);
+          }  while (u8g2.nextPage());
+          break;
+
+        case 4:
+          u8g2.firstPage();
+          do {
+            u8g2.setFont(u8g2_font_helvB14_te);
+            u8g2.setCursor(12, 26);
+            u8g2.print("Bloom Hum");
+            u8g2.setFont(u8g2_font_helvB24_te);
+            u8g2.setCursor(42, 56);
+            u8g2.print(hum_dht22);
+          }  while (u8g2.nextPage());
+          break;
+
+        case 5:
+          u8g2.firstPage();
+          do {
+            u8g2.setFont(u8g2_font_helvB14_te);
+            u8g2.setCursor(22, 26);
+            u8g2.print("Sensor1");
+            u8g2.setFont(u8g2_font_helvB24_te);
+            u8g2.setCursor(42, 56);
+            u8g2.print(sensor1map);
+          }  while (u8g2.nextPage());
+          break;
+
+        case 6:
+          u8g2.firstPage();
+          do {
+            u8g2.setFont(u8g2_font_helvB14_te);
+            u8g2.setCursor(22, 26);
+            u8g2.print("Sensor2");
+            u8g2.setFont(u8g2_font_helvB24_te);
+            u8g2.setCursor(42, 56);
+            u8g2.print(sensor2map);
+          }  while (u8g2.nextPage());
+          break;
+
+        case 7:
+          u8g2.firstPage();
+          do {
+            u8g2.setFont(u8g2_font_helvB14_te);
+            u8g2.setCursor(22, 26);
+            u8g2.print("Sensor3");
+            u8g2.setFont(u8g2_font_helvB24_te);
+            u8g2.setCursor(42, 56);
+            u8g2.print(sensor3map);
+          }  while (u8g2.nextPage());
+          break;
+      }
+  }
+}
 
 void rega() {
-  if (digitalRead(6) == LOW) {
-    digitalWrite(bomba, LOW);
-  } else {
-    digitalWrite(bomba, HIGH);
-  }
+  digitalWrite(bomba, LOW);
+  digitalWrite(15, HIGH);
 }
 
-void timerLampadas_12() {
+void rega_parada() {
+  digitalWrite(bomba, HIGH);
+  digitalWrite(15, LOW);
+}
+
+void luzes() {
   DateTime now = rtc.now();
-  /// 12 hours - Flowering Stage
+  ///////12 horas
   if ((now.hour() >= 20 && now.hour() <= 23 ) or
-      (now.hour() >= 0 && now.hour() <= 20 ))
+      (now.hour() >= 0 && now.hour() <= 8 ))
   {
     digitalWrite(balastro, LOW);
-    Blynk.virtualWrite(V8, "De dia | 400W HPS");
   } else {
     digitalWrite(balastro, HIGH);
-    Blynk.virtualWrite(V8, "Noite");
   }
-}
 
-void timerLampadas_18() {
-  DateTime now = rtc.now();
-  // Serial.println("Vegetativo");
-  /// 18 hours - Flowering Stage
   if ((now.hour() >= 20 && now.hour() <= 23 ) or
       (now.hour() >= 0 && now.hour() <= 14 ))
   {
-    digitalWrite(balastro, LOW);
-    Blynk.virtualWrite(V8, "De dia | 400W HPS");
+    digitalWrite(Led_vegetativo, LOW);
   } else {
-    digitalWrite(balastro, HIGH);
-    Blynk.virtualWrite(V8, "Noite");
+    digitalWrite(Led_vegetativo, HIGH);
   }
 }
 
-void estado_normal() {
-  digitalWrite(mm125tube, HIGH);
-  digitalWrite(outake100mm, HIGH);
-  digitalWrite(cooltubefan, LOW);
-  digitalWrite(intakefan, LOW);
-  digitalWrite(ventoinha_grande, LOW);
- // Blynk.virtualWrite(V7, "Ambiente a Ameno");
-}
-
-void pressao_negativa() {
+void quente_bloom() {
   digitalWrite(mm125tube, LOW);
-  digitalWrite(outake100mm, LOW);
-  digitalWrite(cooltubefan, LOW);
   digitalWrite(intakefan, LOW);
-  digitalWrite(ventoinha_grande, HIGH);
-  Blynk.virtualWrite(V7, "Ambiente Quente");
+  digitalWrite(ventoinha_Bloom, LOW);
 }
-
-void frio() {
-  digitalWrite(intakefan, HIGH);
-  digitalWrite(cooltubefan, HIGH);
+void estado_normal_bloom() {
   digitalWrite(mm125tube, HIGH);
-  digitalWrite(outake100mm, HIGH);
-  digitalWrite(ventoinha_grande, HIGH);
-  Blynk.virtualWrite(V7, "Ambiente Frio");
+  digitalWrite(intakefan, LOW);
+  digitalWrite(ventoinha_Bloom, LOW);
+}
+void frio_bloom_dia() {
+  digitalWrite(intakefan, HIGH);
+  digitalWrite(mm125tube, HIGH);
+  digitalWrite(ventoinha_Bloom, HIGH);
 }
 
-////////////////////////////////////////////////////////////////////FUNÇÕES
 ///////////////////////////TEMPERATURA E HUMIDADE
-void Temperatura_Automatica() {
-  float temp_sensor_dht22 = dht_sensor_dht22.readTemperature();
-  float hum_sensor_dht22 = dht_sensor_dht22.readHumidity() - 12;
-  //////////////////////////// MUITO CALOR
-  DateTime now = rtc.now();
-  if (temp_sensor_dht22 >= 27 )
+void ambiente_bloom() {
+  int temp_dht22 = dht22.readTemperature();
+  Blynk.virtualWrite(V2, temp_dht22, " ºC");
+  int hum_dht22 = dht22.readHumidity() - 9;
+  Blynk.virtualWrite(V1, hum_dht22, " %");
+  if ( temp_dht22 >= 25 or hum_dht22 >= 60 )
   {
-    pressao_negativa();
-  } 
-  //////////////////////////// TEMPERATURA a aquecer
-  if (temp_sensor_dht22 >= 24.90  && temp_sensor_dht22 <= 26.90)
-  {
-    estado_normal();
-    Blynk.virtualWrite(V7, "Ambiente a Aquecer");
+    quente_bloom();
   }
 
-  if (temp_sensor_dht22 >= 21.90 && temp_sensor_dht22 <= 23.90 )
+  if ( temp_dht22 >= 18 && temp_dht22 <= 24 )
   {
-    estado_normal();
-   Blynk.virtualWrite(V7, "Ambiente a Ameno");
+    estado_normal_bloom();
   }
 
-  if (temp_sensor_dht22 >= 18.90 && temp_sensor_dht22 <= 20.90 )
+  if (balastro == LOW && temp_dht22 <= 17)
   {
-    estado_normal();
-    Blynk.virtualWrite(V7, "Ambiente a Arrefecer");
+    frio_bloom_dia();
   }
 
-  //////////////////////////// MUITO FRIO
-  if (temp_sensor_dht22 <= 17.90)
+  if ( hum_dht22 >= 65)
   {
-    frio();
- //Blynk.virtualWrite(V7, "Ambiente Frio");
-  } 
-  
-  int horas = now.hour();
-  int minutos = now.minute();
-  Blynk.virtualWrite(V5, hum_sensor_dht22);
-  Blynk.virtualWrite(V6, temp_sensor_dht22);
-  Blynk.virtualWrite(V10, lemon_kush_scrog);
-  Blynk.virtualWrite(V11, "Arduino ", horas, "h", ":", "", minutos, "m");
+    quente_bloom();
+  }
+}
 
+void Humidade_Automatica_grow() {
+  int temp_dht11 = dht11.readTemperature();
+  int hum_dht11 = dht11.readHumidity();
+
+  int map_hum_dht11 = 0;
+  map_hum_dht11 = map(hum_dht11, 0, 130, 0, 100);
+  Blynk.virtualWrite(V3, map_hum_dht11, " %");
+  Blynk.virtualWrite(V4, temp_dht11, " ºC");
+
+  if (map_hum_dht11 <= 65) {
+    digitalWrite(4, LOW);
+    digitalWrite(ventoinhaGrow, HIGH);
+  } else {
+    digitalWrite(4, HIGH);
+    digitalWrite(ventoinhaGrow, LOW);
+  }
+}
+
+void oled_rega() {
+  u8g2.firstPage();
+  do {
+    u8g2.setFont(u8g2_font_helvB18_te);
+    u8g2.setCursor(0, 42);
+    u8g2.print("A regar");
+  }  while (u8g2.nextPage());
+}
+
+void oled_rega_Stop() {
+  u8g2.firstPage();
+  do {
+    u8g2.setFont(u8g2_font_helvB18_te);
+    u8g2.setCursor(0, 42);
+    u8g2.print("Bomba Parada");
+  }  while (u8g2.nextPage());
 }
